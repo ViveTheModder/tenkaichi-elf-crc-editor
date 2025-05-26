@@ -56,7 +56,7 @@ public class Main
 				if (input.startsWith("0x")) input = input.substring(2);
 				if (input.length()!=8) continue;
 				if (input.contains(" ")) input = input.replace(" ","");
-				currCRC = Integer.parseInt(input, 16);
+				currCRC = Integer.parseUnsignedInt(input, 16);
 				break;
 			}
 			else System.out.println("Invalid CRC format. Try again!\n");
