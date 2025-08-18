@@ -5,14 +5,14 @@ For context, when making changes to the ELF (Executable and Linkable Format, con
 
 This is important, because it can mistake the game for being another (or just an unknown one), affecting the emulation settings on some computers.
 
-Although [the emulator is open-source](https://github.com/PCSX2/pcsx2/releases), I am not aware of the algorithm it uses for the checksum.
+~~Although [the emulator is open-source](https://github.com/PCSX2/pcsx2/releases), I am not aware of the algorithm it uses for the checksum.~~
 
-Otherwise, I would have the program generate the CRC based on the ELF's contents.
+~~Otherwise, I would have the program generate the CRC based on the ELF's contents.~~
+
+Using [the ElfObject::GetCRC() function from PCSX2's Elfheader.cpp code](https://github.com/PCSX2/pcsx2/blob/master/pcsx2/Elfheader.cpp), the program can calculate the given ELF's CRC on its own. 
 
 # Usage/Demonstration
-![image](https://github.com/user-attachments/assets/829a0f83-c0e8-4861-9630-32a6f671357e)
-
-![image](https://github.com/user-attachments/assets/f449d4b3-a73e-42c6-874e-1b1b04130651)
+<img width="808" height="207" alt="image" src="https://github.com/user-attachments/assets/0a2eb8ec-8c5b-4939-aa02-e4ff17765733" />
 
 # Results
 ![image](https://github.com/user-attachments/assets/412c7ebe-f592-4d6c-b451-44959860a35f)
