@@ -12,4 +12,10 @@ public class LittleEndian
 		bb.order(ByteOrder.LITTLE_ENDIAN);
 		return bb.getInt();
 	}
+	public static int getUnsignedIntFromByteArray(byte[] data)
+	{
+		ByteBuffer bb = ByteBuffer.wrap(data);
+		bb.order(ByteOrder.LITTLE_ENDIAN);
+		return bb.getInt() & 0xFFFFFFFF;
+	}
 }

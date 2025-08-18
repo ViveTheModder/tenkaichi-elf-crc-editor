@@ -9,9 +9,20 @@ public class Main
 {
 	//CRCs are ordered from BT1 to BT3, and every set of 3 CRCs is ordered like so: NTSC-J, NTSC-U, PAL
 	static final int[] CRCs = {0xE7D5481C,0x7B0E28D0,0x92EA9EF0,0xE2F289ED,0xFE961D28,0x278722BF,0xF28D21F1,0x428113C2,0xA422BB13};
-	private static int overwriteELF(File elfPath, int newCRC, int oldCRC) throws IOException
+	private static int getCrc(RandomAccessFile elf) throws IOException
 	{
-		RandomAccessFile elf = new RandomAccessFile(elfPath,"rw");
+		byte[] input = new byte[4];
+		int crc=0, fileSize = (int)elf.length();
+		for (int pos=fileSize; pos>=0; pos-=4)
+		{
+			elf.seek(pos);
+			elf.read(input);
+			crc^=LittleEndian.getUnsignedIntFromByteArray(input);
+		}
+		return crc;
+	}
+	private static int overwriteELF(RandomAccessFile elf, int newCRC, int oldCRC) throws IOException
+	{
 		int fileSize = (int) elf.length();
 		elf.seek(fileSize-4);
 		int xor = newCRC^oldCRC;
@@ -21,70 +32,62 @@ public class Main
 	}
 	public static void main(String[] args) 
 	{
-		Scanner sc = new Scanner(System.in);
-		int btVer, currCRC, region;
-		String input;
-		File elfPath;
-		while (true)
+		try
 		{
-			System.out.print("Enter the Budokai Tenkaichi version whose ELF you are modifying (from 1 to 3): ");
-			input = sc.nextLine();
-			if (input.matches("[1-3]+"))
+			Scanner sc = new Scanner(System.in);
+			int btVer, currCRC, region;
+			String input;
+			File elfPath;
+			while (true)
 			{
-				btVer = Integer.parseInt(input); break;
+				System.out.print("Enter the Budokai Tenkaichi version whose ELF you are modifying (from 1 to 3): ");
+				input = sc.nextLine();
+				if (input.matches("[1-3]+"))
+				{
+					btVer = Integer.parseInt(input); break;
+				}
+				else System.out.println("Invalid Budokai Tenkaichi version. Try again!\n");
 			}
-			else System.out.println("Invalid Budokai Tenkaichi version. Try again!\n");
-		}
-		while (true)
-		{
-			System.out.print("Enter the game's region (1 -> NTSC-J/Japan, 2 -> NTSC-U/USA, 3 -> PAL/EU): ");
-			input = sc.nextLine();
-			if (input.matches("[1-3]+"))
+			while (true)
 			{
-				region = Integer.parseInt(input); break;
+				System.out.print("Enter the game's region (1 -> NTSC-J/Japan, 2 -> NTSC-U/USA, 3 -> PAL/EU): ");
+				input = sc.nextLine();
+				if (input.matches("[1-3]+"))
+				{
+					region = Integer.parseInt(input); break;
+				}
+				else System.out.println("Invalid Budokai Tenkaichi region. Try again!\n");
 			}
-			else System.out.println("Invalid Budokai Tenkaichi region. Try again!\n");
-		}
-		while (true)
-		{
-			System.out.println("Enter the CRC of your ISO's current ELF.\n"
-			+ "To check it out, open PCSX2, go to Misc -> Show Console, boot up the game, and write down the byte sequence "
-			+ "between the square brackets in the console's window title.");
-			input = sc.nextLine();
-			if (input.matches("[0-9a-fA-F]+") || input.matches("0[xX][0-9a-fA-F]+"))
+			while (true)
 			{
-				if (input.startsWith("0x")) input = input.substring(2);
-				if (input.length()!=8) continue;
-				if (input.contains(" ")) input = input.replace(" ","");
-				currCRC = Integer.parseUnsignedInt(input, 16);
-				break;
+				System.out.print("Enter the exact path of the ELF: ");
+				input = sc.nextLine();
+				File tempPath = new File(input);
+				if (tempPath.isFile())
+				{
+					elfPath = tempPath; break;
+				}
+				else System.out.println("Invalid ELF file path. Try again!\n");
 			}
-			else System.out.println("Invalid CRC format. Try again!\n");
-		}
-		while (true)
-		{
-			System.out.print("Enter the exact path of the ELF: ");
-			input = sc.nextLine();
-			File tempPath = new File(input);
-			if (tempPath.isFile())
+			sc.close();
+			
+			long start = System.currentTimeMillis();
+			RandomAccessFile elf = new RandomAccessFile(elfPath,"rw");
+			int ogCRC = CRCs[3*(btVer-1)+(region-1)];
+			System.out.println("Calculating the ELF's CRC...");
+			currCRC = getCrc(elf);
+
+			if (currCRC==ogCRC)
 			{
-				elfPath = tempPath; break;
+				System.out.println("The CRCs are equal, therefore no fixes are required.");
+				System.exit(1);
 			}
-			else System.out.println("Invalid ELF file path. Try again!\n");
-		}
-		sc.close();
-		int ogCRC = CRCs[3*(btVer-1)+(region-1)];
-		if (currCRC==ogCRC)
-		{
-			System.out.println("The CRCs are equal, therefore no fixes are required.");
-			System.exit(1);
-		}
-		try 
-		{
 			System.out.print(String.format("\nModified CRC: %8x\nOriginal CRC: %8x", currCRC, ogCRC));
-			System.out.println(String.format("\n XOR Results: %8x",overwriteELF(elfPath, currCRC, ogCRC)));
-		} 
-		catch (IOException e) 
+			System.out.println(String.format("\n XOR Results: %8x",overwriteELF(elf, currCRC, ogCRC)));
+			long finish = System.currentTimeMillis();
+			System.out.println("Time elapsed: "+(finish-start)/1000.0+" s");
+		}
+		catch (IOException e)
 		{
 			e.printStackTrace();
 		}
