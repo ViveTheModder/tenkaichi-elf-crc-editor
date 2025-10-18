@@ -12,7 +12,21 @@ This is important, because it can mistake the game for being another (or just an
 Using [the ElfObject::GetCRC() function from PCSX2's Elfheader.cpp code](https://github.com/PCSX2/pcsx2/blob/master/pcsx2/Elfheader.cpp), the program can calculate the given ELF's CRC on its own. 
 
 # Usage/Demonstration
-<img width="808" height="207" alt="image" src="https://github.com/user-attachments/assets/0a2eb8ec-8c5b-4939-aa02-e4ff17765733" />
+## CLI
+<img width="1914" height="758" alt="image" src="https://github.com/user-attachments/assets/3740e508-047b-42ba-8f4c-9b61498adc20" />
+
+## GUI
+The Budokai Tenkaichi version and game region change based on the opened ELF.
+
+<img width="1416" height="646" alt="image" src="https://github.com/user-attachments/assets/809828ab-52c3-4b70-b0d4-4543b950a613" />
+
+<img width="624" height="632" alt="image" src="https://github.com/user-attachments/assets/753c3ba1-0ce8-47af-ae99-06d4c497b033" />
+
+<img width="624" height="632" alt="image" src="https://github.com/user-attachments/assets/61a66509-b15e-435e-99eb-684f34b4a260" />
+
+<img width="639" height="665" alt="image" src="https://github.com/user-attachments/assets/a7d35b86-f4e5-44cc-a8f1-1c5c08739ac5" />
+
+<img width="652" height="655" alt="image" src="https://github.com/user-attachments/assets/1c2258c0-06ba-4488-aa0e-0aee29731bda" />
 
 # Results
 ![image](https://github.com/user-attachments/assets/412c7ebe-f592-4d6c-b451-44959860a35f)
