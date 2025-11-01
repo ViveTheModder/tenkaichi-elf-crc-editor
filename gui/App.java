@@ -54,6 +54,7 @@ public class App {
 		if (runWinErrorSnd!=null) runWinErrorSnd.run();
 	}
 	public static void setApp(String title) throws Exception {
+		String ver = "v2.1";
 		String[] labelText = {"Budokai Tenkaichi Version", "Game Region"};
 		String[] btVers = {"BT1 / Sparking!", "BT2 / Sparking! NEO", "BT3 / Sparking! METEOR"};
 		String[] regions = {"NTSC-J / Japan", "NTSC-U / USA", "PAL / EU"};
@@ -114,7 +115,8 @@ public class App {
 				});
 				box.add(label);
 				box.add(author);
-				JOptionPane.showMessageDialog(null, box, title, JOptionPane.INFORMATION_MESSAGE);
+				JOptionPane.showMessageDialog(null, box, title + " " + ver, 
+				JOptionPane.INFORMATION_MESSAGE);
 			}
 		});
 		choose.addActionListener(new ActionListener() {
@@ -122,12 +124,12 @@ public class App {
 			public void actionPerformed(ActionEvent e) {
 				currElfPath = getElfPathFromChooser();
 				if (currElfPath != null) {
-					frame.setTitle(title + " - " + currElfPath.getName());
+					frame.setTitle(title + " " + ver + " - " + currElfPath.getName());
 					int[] elfParams = Main.getElfParams(currElfPath);
 					argComboBoxes[0].setSelectedIndex(elfParams[0]);
 					argComboBoxes[1].setSelectedIndex(elfParams[1]);
 				}
-				else frame.setTitle(title);
+				else frame.setTitle(title + " " + ver);
 			}
 		});
 		fixBtn.addActionListener(new ActionListener() {
@@ -138,7 +140,7 @@ public class App {
 					JOptionPane.showMessageDialog(null, "No ELF provided!", title,
 					JOptionPane.ERROR_MESSAGE);
 				} 
-				else setProgress(frame, title, argComboBoxes, defToolkit);
+				else setProgress(frame, title + " " + ver, argComboBoxes, defToolkit);
 			}
 		});
 		//add components
@@ -162,7 +164,7 @@ public class App {
 		frame.setJMenuBar(menuBar);
 		frame.setSize(512, 512);
 		frame.setLocationRelativeTo(null);
-		frame.setTitle(title);
+		frame.setTitle(title + " " + ver);
 		frame.setVisible(true);
 	}
 	private static void setProgress(JFrame frame, String title, 

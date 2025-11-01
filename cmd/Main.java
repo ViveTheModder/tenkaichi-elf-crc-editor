@@ -53,8 +53,9 @@ public class Main {
 		}
 		long end = System.currentTimeMillis();
 		double time = (end - start) / 1000.0;
+		double elfTime = overwriteELF(elf, currCRC, ogCRC);
 		if (print) System.out.printf("\nModified CRC: %8x\nOriginal CRC: %8x", currCRC, ogCRC);
-		if (print) System.out.printf("\n XOR Results: %8x\n", overwriteELF(elf, currCRC, ogCRC));
+		if (print) System.out.printf("\n XOR Results: %8x\n", elfTime);
 		if (print) System.out.println("Time elapsed: " + time + " s");
 		return time;
 	}
