@@ -11,8 +11,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
 import java.io.File;
 import java.net.URI;
 import javax.swing.Box;
@@ -53,8 +53,9 @@ public class App {
 		Runnable runWinErrorSnd = (Runnable) defToolkit.getDesktopProperty("win.sound.exclamation");
 		if (runWinErrorSnd!=null) runWinErrorSnd.run();
 	}
+	@SuppressWarnings("unchecked")
 	public static void setApp(String title) throws Exception {
-		String ver = "v2.1";
+		String ver = "v2.2";
 		String[] labelText = {"Budokai Tenkaichi Version", "Game Region"};
 		String[] btVers = {"BT1 / Sparking!", "BT2 / Sparking! NEO", "BT3 / Sparking! METEOR"};
 		String[] regions = {"NTSC-J / Japan", "NTSC-U / USA", "PAL / EU"};
@@ -79,7 +80,7 @@ public class App {
 			if (i == 0) argComboBoxes[i] = new JComboBox<String>(btVers);
 			else argComboBoxes[i] = new JComboBox<String>(regions);
 			argComboBoxes[i].setFont(normalFont);
-			((JLabel)argComboBoxes[i].getRenderer()).setHorizontalAlignment(JLabel.CENTER);
+			((JLabel) argComboBoxes[i].getRenderer()).setHorizontalAlignment(JLabel.CENTER);
 			argLabels[i] = new JLabel(labelText[i]);
 			argLabels[i].setForeground(new Color(254, 112, 1));
 			argLabels[i].setFont(boldFont);
@@ -110,13 +111,15 @@ public class App {
 						try {
 							URI uri = new URI("https://github.com/ViveTheModder");
 							Desktop.getDesktop().browse(uri);
-						} catch (Exception ex) {ex.printStackTrace();}
+						} 
+						catch (Exception ex) {
+							ex.printStackTrace();
+						}
 					}
 				});
 				box.add(label);
 				box.add(author);
-				JOptionPane.showMessageDialog(null, box, title + " " + ver, 
-				JOptionPane.INFORMATION_MESSAGE);
+				JOptionPane.showMessageDialog(null, box, title + " " + ver, JOptionPane.INFORMATION_MESSAGE);
 			}
 		});
 		choose.addActionListener(new ActionListener() {
@@ -137,8 +140,7 @@ public class App {
 			public void actionPerformed(ActionEvent e) {
 				if (currElfPath == null) {
 					errorBeep(defToolkit);
-					JOptionPane.showMessageDialog(null, "No ELF provided!", title,
-					JOptionPane.ERROR_MESSAGE);
+					JOptionPane.showMessageDialog(null, "No ELF provided!", title, JOptionPane.ERROR_MESSAGE);
 				} 
 				else setProgress(frame, title + " " + ver, argComboBoxes, defToolkit);
 			}
@@ -197,25 +199,15 @@ public class App {
 		panel.add(bar, gbc);
 		dialog.add(panel);
 		//add window listener
-		dialog.addWindowListener(new WindowListener() {
+		dialog.addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowOpened(WindowEvent e) {
 				frame.setEnabled(false);
 			}
 			@Override
-			public void windowClosing(WindowEvent e) {}
-			@Override
 			public void windowClosed(WindowEvent e) {
 				frame.setEnabled(true);
 			}
-			@Override
-			public void windowIconified(WindowEvent e) {}
-			@Override
-			public void windowDeiconified(WindowEvent e) {}
-			@Override
-			public void windowActivated(WindowEvent e) {}
-			@Override
-			public void windowDeactivated(WindowEvent e) {}
 		});
 		//set dialog properties
 		dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
@@ -230,8 +222,9 @@ public class App {
 				double time = Main.applyElfFix(argComboBoxes[0].getSelectedIndex() + 1, 
 				argComboBoxes[1].getSelectedIndex() + 1, currElfPath, false, bar);
 				defToolkit.beep();
-				JOptionPane.showMessageDialog(null, "ELF has been fixed in "
-				+ time + " seconds!", title, JOptionPane.INFORMATION_MESSAGE);
+				String msg = time >= 0 ? "ELF has been fixed in " + time + " seconds!" : "The CRCs are equal. No fixes are required.";
+				JOptionPane.showMessageDialog(null, msg, title, JOptionPane.INFORMATION_MESSAGE);
+				dialog.dispose();
 				return null;
 			}
 		};

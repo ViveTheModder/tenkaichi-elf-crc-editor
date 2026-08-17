@@ -3,6 +3,7 @@ package cmd;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Arrays;
 import javax.swing.JProgressBar;
 import gui.App;
 
@@ -33,8 +34,15 @@ public class Main {
 		return crc;
 	}
 	private static int overwriteELF(RandomAccessFile elf, int newCRC, int oldCRC) throws IOException {
+		byte[] emptyArr = new byte[4], lastBytes = new byte[4];
 		int fileSize = (int) elf.length();
 		elf.seek(fileSize - 4);
+		elf.read(lastBytes);
+		elf.seek(fileSize - 4);
+		if (Arrays.equals(emptyArr, lastBytes)) {
+			elf.write(emptyArr);
+			elf.seek(fileSize - 4);
+		}
 		int xor = newCRC ^ oldCRC;
 		elf.writeInt(LittleEndian.getInt(xor));
 		elf.close();
@@ -48,15 +56,17 @@ public class Main {
 		if (print) System.out.println("Calculating the ELF's CRC...");
 		int currCRC = getCrc(elf, bar);
 		if (currCRC == ogCRC) {
-			System.out.println("The CRCs are equal, therefore no fixes are required.");
-			return 0;
+			if (print) System.out.println("The CRCs are equal, therefore no fixes are required.");
+			return -1;
 		}
 		long end = System.currentTimeMillis();
 		double time = (end - start) / 1000.0;
-		double elfTime = overwriteELF(elf, currCRC, ogCRC);
-		if (print) System.out.printf("\nModified CRC: %8x\nOriginal CRC: %8x", currCRC, ogCRC);
-		if (print) System.out.printf("\n XOR Results: %8x\n", elfTime);
-		if (print) System.out.println("Time elapsed: " + time + " s");
+		int result = overwriteELF(elf, currCRC, ogCRC);
+		if (print) {
+			System.out.printf("\nModified CRC: %8x\nOriginal CRC: %8x", currCRC, ogCRC);
+			System.out.printf("\n XOR Results: %8x\n", result);
+			System.out.println("Time elapsed: " + time + " s");
+		}
 		return time;
 	}
 	public static int[] getElfParams(File elfPath) {
