@@ -1,6 +1,7 @@
 package gui;
 //Tenkaichi ELF CRC Editor by ViveTheJoestar
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -11,14 +12,14 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
+import java.net.URLConnection;
 import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
-import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -27,44 +28,86 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JProgressBar;
-import javax.swing.SwingWorker;
 import javax.swing.UIManager;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import cmd.Main;
 
 public class App {
-	private static File currElfPath = null;
-	private static File getElfPathFromChooser() {
-		File elfPath = null;
+	//solution taken from Stephen C's answer in stackoverflow (https://stackoverflow.com/a/1402762)
+	private static boolean isInternetAvailable(URI uri) {
+		try {
+			URL url = uri.toURL();
+			URLConnection urlc = url.openConnection();
+			urlc.connect();
+			urlc.getInputStream().close();
+			return true;
+		} catch (IOException e) {
+			return false;
+		}
+	}
+	private static File getElf(File currDir, FileNameExtensionFilter[] filters, Toolkit tk) {
+		File elf = null;
 		JFileChooser chooser = new JFileChooser();
-		if (currElfPath != null) chooser.setCurrentDirectory(elfPath);
+		if (currDir != null) chooser.setCurrentDirectory(currDir);
+		for (FileNameExtensionFilter flt: filters) chooser.addChoosableFileFilter(flt);
 		chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-		chooser.setDialogTitle("Choose ELF...");
-		while (elfPath == null) {
+		chooser.setDialogTitle("Choose a Sparking/Tenkaichi ELF...");
+		while (elf == null) {
 			int result = chooser.showOpenDialog(null);
 			if (result == JFileChooser.APPROVE_OPTION) {
-				elfPath = chooser.getSelectedFile();
+				File tmp = chooser.getSelectedFile();
+				for (FileNameExtensionFilter flt: filters) {
+					if (flt.getDescription().contains(tmp.getName().toUpperCase())) {
+						elf = tmp;
+						break;
+					}
+				}
+				if (elf == null) {
+					errorBeep(tk);
+					String msg = "The chosen ELF's file name does not match with those of recognized Sparking/Tenkaichi ELFs!";
+					JOptionPane.showMessageDialog(null, msg, "Invalid ELF Name", JOptionPane.INFORMATION_MESSAGE);
+				}
 			}
 			else if (result == JFileChooser.CANCEL_OPTION) break;
 		}
-		return elfPath;
+		return elf;
+	}
+	private static FileNameExtensionFilter[] getElfFilters(String[] btVers, String[] regions) {
+		FileNameExtensionFilter[] filters = new FileNameExtensionFilter[Main.ELF_NAMES.length];
+		for (int fltCnt = 0; fltCnt < filters.length; fltCnt++) {
+			String desc = "[" + regions[fltCnt % 3] + "] " + btVers[fltCnt / 3] + " (" + Main.ELF_NAMES[fltCnt] + ")";
+			String ext = Main.ELF_NAMES[fltCnt].substring(9, 11);
+			filters[fltCnt] = new FileNameExtensionFilter(desc, ext);
+		}
+		return filters;
 	}
 	private static void errorBeep(Toolkit defToolkit) {
 		Runnable runWinErrorSnd = (Runnable) defToolkit.getDesktopProperty("win.sound.exclamation");
-		if (runWinErrorSnd!=null) runWinErrorSnd.run();
+		if (runWinErrorSnd != null) runWinErrorSnd.run();
 	}
+	private static void errorDialog(Exception e, Toolkit tk) {
+		String errMsg = e.getClass().getSimpleName() + ": " + e.getMessage() + "\n";
+		StackTraceElement[] stackTraceArr = e.getStackTrace();
+		for (StackTraceElement ste: stackTraceArr) {
+			String line = ste.toString().replace("[", "").replace("]", "");
+			if (line.startsWith("gui") || line.startsWith("cmd")) errMsg += line + "\n";
+		}
+		errorBeep(tk);
+		JOptionPane.showMessageDialog(null, errMsg, "Exception", JOptionPane.ERROR_MESSAGE);
+	}
+	
 	@SuppressWarnings("unchecked")
 	public static void setApp(String title) throws Exception {
-		String ver = "v2.2";
+		File[] currDir = new File[1];
+		String ver = "v3.0";
 		String[] labelText = {"Budokai Tenkaichi Version", "Game Region"};
 		String[] btVers = {"BT1 / Sparking!", "BT2 / Sparking! NEO", "BT3 / Sparking! METEOR"};
 		String[] regions = {"NTSC-J / Japan", "NTSC-U / USA", "PAL / EU"};
 		Toolkit defToolkit = Toolkit.getDefaultToolkit();
 		UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		//initialize components
-		Font boldFont = new Font("Tahoma", Font.BOLD, 20);
-		Font normalFont = new Font("Tahoma", Font.PLAIN, 15);
-		Font titleFont = new Font("Tahoma", Font.BOLD, 30);
+		Font boldFont = new Font("Tahoma", Font.BOLD, 20), normalFont = new Font("Tahoma", Font.PLAIN, 15);
+		Font urlFont = new Font("Tahoma", Font.BOLD, 15), titleFont = new Font("Tahoma", Font.BOLD, 30);
 		GridBagConstraints gbc = new GridBagConstraints();
 		JButton fixBtn = new JButton("Fix ELF");
 		JComboBox<String>[] argComboBoxes = new JComboBox[2];
@@ -76,7 +119,7 @@ public class App {
 		JMenuItem choose = new JMenuItem("Choose ELF...");
 		JFrame frame = new JFrame();
 		JPanel panel = new JPanel(new GridBagLayout());
-		for (int i = 0; i < 2; i++) {
+		for (int i = 0; i < argLabels.length; i++) {
 			if (i == 0) argComboBoxes[i] = new JComboBox<String>(btVers);
 			else argComboBoxes[i] = new JComboBox<String>(regions);
 			argComboBoxes[i].setFont(normalFont);
@@ -103,17 +146,18 @@ public class App {
 				JLabel label = new JLabel("Made by: ");
 				JLabel author = new JLabel("ViveTheJoestar");
 				label.setFont(normalFont);
-				author.setFont(normalFont);
+				author.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+				author.setFont(urlFont);
 				author.setForeground(Color.BLUE);
 				author.addMouseListener(new MouseAdapter() {
 					@Override
 					public void mouseClicked(MouseEvent e) {
 						try {
 							URI uri = new URI("https://github.com/ViveTheModder");
-							Desktop.getDesktop().browse(uri);
+							if (isInternetAvailable(uri)) Desktop.getDesktop().browse(uri);
 						} 
 						catch (Exception ex) {
-							ex.printStackTrace();
+							errorDialog(ex, defToolkit);
 						}
 					}
 				});
@@ -125,10 +169,10 @@ public class App {
 		choose.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				currElfPath = getElfPathFromChooser();
-				if (currElfPath != null) {
-					frame.setTitle(title + " " + ver + " - " + currElfPath.getName());
-					int[] elfParams = Main.getElfParams(currElfPath);
+				currDir[0] = getElf(currDir[0], getElfFilters(btVers, regions), defToolkit);
+				if (currDir[0] != null) {
+					frame.setTitle(title + " " + ver + " - " + currDir[0].getName());
+					int[] elfParams = Main.getElfParams(currDir[0]);
 					argComboBoxes[0].setSelectedIndex(elfParams[0]);
 					argComboBoxes[1].setSelectedIndex(elfParams[1]);
 				}
@@ -138,11 +182,22 @@ public class App {
 		fixBtn.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (currElfPath == null) {
+				if (currDir[0] == null) {
 					errorBeep(defToolkit);
 					JOptionPane.showMessageDialog(null, "No ELF provided!", title, JOptionPane.ERROR_MESSAGE);
 				} 
-				else setProgress(frame, title + " " + ver, argComboBoxes, defToolkit);
+				else {
+					try {
+						int btVer = argComboBoxes[0].getSelectedIndex() + 1, region = argComboBoxes[1].getSelectedIndex() + 1;
+						double time = Main.applyElfFix(btVer, region, currDir[0], false);
+						defToolkit.beep();
+						String msg = time >= 0 ? "ELF has been fixed in " + time + " seconds!" : "The CRCs are equal. No fixes are required.";
+						JOptionPane.showMessageDialog(null, msg, title, JOptionPane.INFORMATION_MESSAGE);
+					}
+					catch (IOException ex) {
+						errorDialog(ex, defToolkit);
+					}
+				}
 			}
 		});
 		//add components
@@ -150,84 +205,23 @@ public class App {
 		helpMenu.add(about);
 		menuBar.add(fileMenu);
 		menuBar.add(helpMenu);
-		panel.add(titleLabel,gbc);
-		panel.add(new JLabel(" "),gbc);
-		panel.add(new JLabel(" "),gbc);
-		panel.add(argLabels[0],gbc);
-		panel.add(argComboBoxes[0],gbc);
-		panel.add(new JLabel(" "),gbc);
-		panel.add(argLabels[1],gbc);
-		panel.add(argComboBoxes[1],gbc);
-		panel.add(new JLabel(" "),gbc);
-		panel.add(fixBtn,gbc);
+		panel.add(titleLabel, gbc);
+		panel.add(new JLabel(" "), gbc);
+		panel.add(new JLabel(" "), gbc);
+		panel.add(argLabels[0], gbc);
+		panel.add(argComboBoxes[0], gbc);
+		panel.add(new JLabel(" "), gbc);
+		panel.add(argLabels[1], gbc);
+		panel.add(argComboBoxes[1], gbc);
+		panel.add(new JLabel(" "), gbc);
+		panel.add(fixBtn, gbc);
 		frame.add(panel);
 		//set frame properties
 		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		frame.setJMenuBar(menuBar);
-		frame.setSize(512, 512);
+		frame.setMinimumSize(new Dimension(512, 512));
 		frame.setLocationRelativeTo(null);
 		frame.setTitle(title + " " + ver);
 		frame.setVisible(true);
-	}
-	private static void setProgress(JFrame frame, String title, 
-	JComboBox<String>[] argComboBoxes, Toolkit defToolkit) {
-		//change progress bar background color and text color
-		UIManager.put("ProgressBar.background", Color.WHITE);
-		UIManager.put("ProgressBar.foreground", Color.GREEN);
-		UIManager.put("ProgressBar.selectionBackground", Color.BLACK);
-		UIManager.put("ProgressBar.selectionForeground", Color.BLACK);
-		//initialize components
-		Dimension barSize = new Dimension(300, 30);
-		Font boldFont = new Font("Tahoma", Font.BOLD, 20);
-		Font normalFont = new Font("Tahoma", Font.PLAIN, 15);
-		GridBagConstraints gbc = new GridBagConstraints();
-		JDialog dialog = new JDialog();
-		JLabel label = new JLabel("Calculating CRC...");
-		JPanel panel = new JPanel(new GridBagLayout());
-		JProgressBar bar = new JProgressBar();
-		//set component properties
-		bar.setFont(normalFont);
-		bar.setMaximumSize(barSize);
-		bar.setMinimumSize(barSize);
-		bar.setPreferredSize(barSize);
-		bar.setStringPainted(true);
-		gbc.gridwidth = GridBagConstraints.REMAINDER;
-		label.setFont(boldFont);
-		//add components
-		panel.add(label,gbc);
-		panel.add(new JLabel(" "), gbc);
-		panel.add(bar, gbc);
-		dialog.add(panel);
-		//add window listener
-		dialog.addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowOpened(WindowEvent e) {
-				frame.setEnabled(false);
-			}
-			@Override
-			public void windowClosed(WindowEvent e) {
-				frame.setEnabled(true);
-			}
-		});
-		//set dialog properties
-		dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-		dialog.setSize(512, 256);
-		dialog.setLocationRelativeTo(null);
-		dialog.setTitle(title);
-		dialog.setVisible(true);
-		//set and execute background worker
-		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-			@Override
-			protected Void doInBackground() throws Exception {
-				double time = Main.applyElfFix(argComboBoxes[0].getSelectedIndex() + 1, 
-				argComboBoxes[1].getSelectedIndex() + 1, currElfPath, false, bar);
-				defToolkit.beep();
-				String msg = time >= 0 ? "ELF has been fixed in " + time + " seconds!" : "The CRCs are equal. No fixes are required.";
-				JOptionPane.showMessageDialog(null, msg, title, JOptionPane.INFORMATION_MESSAGE);
-				dialog.dispose();
-				return null;
-			}
-		};
-		worker.execute();
 	}
 }

@@ -3,58 +3,49 @@ package cmd;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.Arrays;
-import javax.swing.JProgressBar;
 import gui.App;
 
 public class Main {
-	// CRCs are ordered from BT1 to BT3, and every set of 3 CRCs is ordered like so: 
+	//CRCs are ordered from BT1 to BT3, and every set of 3 CRCs is ordered like so: 
 	private static final int[] CRCs = {
 		// NTSC-J  |   NTSC-U  |    PAL
 		0xE7D5481C, 0x7B0E28D0, 0x92EA9EF0,
 		0xE2F289ED, 0xFE961D28, 0x278722BF,
 		0xF28D21F1, 0x428113C2, 0xA422BB13
 	};
-	private static final String[] ELF_NAMES = {
+	public static final String[] ELF_NAMES = {
 		//  NTSC-J    |   NTSC-U     |    PAL
 		"SLPS_255.60", "SLUS_212.27", "SLES_532.00",
 		"SLPS_256.90", "SLUS_214.41", "SLES_541.64",
 		"SLPS_258.15", "SLUS_216.78", "SLES_549.45",
 	};
-	private static int getCrc(RandomAccessFile elf, JProgressBar bar) throws IOException {
+	private static int getCrc(RandomAccessFile elf) throws IOException {
 		byte[] input = new byte[4];
 		int crc = 0, fileSize = (int) elf.length();
-		if (bar != null) bar.setMaximum(fileSize);
-		for (int pos = fileSize; pos >= 0; pos -= 4) {
-			elf.seek(pos);
-			elf.read(input);
+		byte[] elfBytes = new byte[fileSize];
+		elf.seek(fileSize - 4);
+		elf.write(input);
+		elf.seek(0);
+		elf.readFully(elfBytes);
+		elf.seek(fileSize - 4);
+		for (int pos = fileSize - 4; pos >= 0; pos -= 4) {
+			System.arraycopy(elfBytes, pos, input, 0, input.length);
 			crc ^= LittleEndian.getUnsignedIntFromByteArray(input);
-			if (bar != null) bar.setValue(bar.getValue() + 4);
 		}
 		return crc;
 	}
 	private static int overwriteELF(RandomAccessFile elf, int newCRC, int oldCRC) throws IOException {
-		byte[] emptyArr = new byte[4], lastBytes = new byte[4];
-		int fileSize = (int) elf.length();
-		elf.seek(fileSize - 4);
-		elf.read(lastBytes);
-		elf.seek(fileSize - 4);
-		if (Arrays.equals(emptyArr, lastBytes)) {
-			elf.write(emptyArr);
-			elf.seek(fileSize - 4);
-		}
 		int xor = newCRC ^ oldCRC;
 		elf.writeInt(LittleEndian.getInt(xor));
 		elf.close();
 		return xor;
 	}
-	public static double applyElfFix(int btVer, int region, File elfPath, boolean print, 
-	JProgressBar bar) throws IOException {
+	public static double applyElfFix(int btVer, int region, File elfPath, boolean print) throws IOException {
 		long start = System.currentTimeMillis();
 		RandomAccessFile elf = new RandomAccessFile(elfPath, "rw");
 		int ogCRC = CRCs[3 * (btVer - 1) + (region - 1)];
 		if (print) System.out.println("Calculating the ELF's CRC...");
-		int currCRC = getCrc(elf, bar);
+		int currCRC = getCrc(elf);
 		if (currCRC == ogCRC) {
 			if (print) System.out.println("The CRCs are equal, therefore no fixes are required.");
 			return -1;
@@ -70,13 +61,13 @@ public class Main {
 		return time;
 	}
 	public static int[] getElfParams(File elfPath) {
-		int[] elfParams = {-1, -1};
+		int[] elfParams = { -1, -1 };
 		for (int i = 0; i < ELF_NAMES.length; i++) {
 			if (elfPath.getName().toUpperCase().equals(ELF_NAMES[i])) {
-				elfParams[0] = (i + 1) / 3;
-				if (ELF_NAMES[i].startsWith("SLPS")) elfParams[1] = 2;
+				elfParams[0] = i / 3;
+				if (ELF_NAMES[i].startsWith("SLPS")) elfParams[1] = 0;
 				else if (ELF_NAMES[i].startsWith("SLUS")) elfParams[1] = 1;
-				else elfParams[1] = 0;
+				else elfParams[1] = 2;
 			}
 		}
 		return elfParams;
@@ -90,15 +81,15 @@ public class Main {
 			+ "[bt-ver] -> Budokai Tenkaichi version (1, 2, 3)\n"
 			+ "[region-id] -> Region ID (1 -> NTSC-J / Japan, 2 -> NTSC-U / USA, 3 -> PAL / EU)";
 			String title = "Tenkaichi ELF CRC Editor";
-			if (args.length>2) {
+			if (args.length > 2) {
 				elfParams[0] = Integer.parseInt(args[0]);
 				elfParams[1] = Integer.parseInt(args[1]);
 				elfPath = new File(args[2].replace("\"", ""));
-				if (elfParams[0]<1 || elfParams[0]>3) {
+				if (elfParams[0] < 1 || elfParams[0] > 3) {
 					System.out.println("ERROR: Invalid Budokai Tenkaichi version!");
 					System.exit(1);
 				}
-				if (elfParams[1]<1 || elfParams[1]>3) {
+				if (elfParams[1] < 1 || elfParams[1] > 3) {
 					System.out.println("ERROR: Invalid region ID!");
 					System.exit(2);
 				}
@@ -106,12 +97,15 @@ public class Main {
 					System.out.println("ERROR: Invalid ELF file path!");
 					System.exit(3);
 				}
-				applyElfFix(elfParams[0], elfParams[1], elfPath, true, null);
+				applyElfFix(elfParams[0], elfParams[1], elfPath, true);
 			}
-			else if (args.length>0) {
+			else if (args.length > 0) {
 				if (args[0].equals("-h")) System.out.println(helpText);
 			}
 			else App.setApp(title);
-		} catch (Exception e) {e.printStackTrace();}
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 }
